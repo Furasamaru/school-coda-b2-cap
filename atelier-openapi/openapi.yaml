@@ -276,56 +276,58 @@ paths:
     post:
       tags: [ Découverte ]
       operationId: searchSummaryTrips
-      summary: "Recherche les trajets reliant deux villes."
+      summary: Recherche les trajets reliant deux villes.
       description: |
         Les trajets recherchés auront pour détails les deux villes reliées, à la date, et le nombre de places choisies.
         
         Les trajets sont tous directs, aucune correspondance n'ont lieu.
       security: [ ]
-      parameters:
-        - name: de
-          in: query
-          required: true
-          description: Ville de départ
-          schema:
-            type: string
-            example: Dij
-        - name: ar
-          in: query
-          required: true
-          description: Ville d'arrivée
-          schema:
-            type: string
-            example: Lyo
-        - name: da
-          in: query
-          required: true
-          description: Date de départ
-          schema:
-            type: string
-            format: date
-            example: 2026/10/30
-        - name: p
-          in: query
-          required: true
-          description: Nombre de places choisies dans le filtre.
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 50
-            default: 1
-      responses:
-        '200':
-          description: Recherche effectuée avec succès.
-          content:
+      requestBody:
+        required: true
+        content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/TripSummary'
-            example:
-              - id: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
-        '422':
+              type: object
+              required:
+                - departureCityId
+                - arrivalCityId
+                - date
+              properties:
+                departureCityId:
+                  type: string
+                  format: uuid
+                  description: ID de la ville de départ
+                  example: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+                arrivalCityId:
+                  type: string
+                  format: uuid
+                  description: ID de la ville d'arrivée
+                  example: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+                date:
+                  type: string
+                  format: date
+                  description: Date du voyage (YYYY-MM-DD)
+                  example: 2026-10-30
+                passengers:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 1
+                  description: Nombre de places souhaitées
+                  example: 1
+                responses:
+                  '200':
+                    description: Recherche effectuée avec succès.
+                    content:
+                      application/json:
+                        schema:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/TripSummary'
+                        example:
+                          - id: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+                  '400': { $ref: '#/components/responses/BadRequest' }
+                  '422': { $ref: '#/components/responses/ValidationError' }
 
 
 
@@ -614,7 +616,7 @@ components:
       required: [id, departure, arrival, departureTime, arrivalTime, travelTime, price]
       properties:
         id:
-          type: int
+          type: string
           format: uuid
           example: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
           description: "Code unique ou identifiant de trajet"
@@ -632,8 +634,8 @@ components:
           type: string
           example: "20"
         price:
-          type: int
-          example: €30
+          type: integer
+          example: 30
 
 
     # TripDetail
