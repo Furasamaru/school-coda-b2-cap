@@ -71,13 +71,13 @@ paths:
 
   /auth/register:
     post:
-      tags: [Authentification]
+      tags: [ Authentification ]
       operationId: register
       summary: Ouvrir un dossier voyageur
       description: |
         Crée un compte. L'ONTB ne vérifie pas l'adresse e-mail : la responsabilité
         de sa validité incombe au voyageur, conformément au règlement en vigueur.
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -107,7 +107,7 @@ paths:
 
   /auth/login:
     post:
-      tags: [Authentification]
+      tags: [ Authentification ]
       operationId: login
       summary: Se connecter
       description: |
@@ -117,7 +117,7 @@ paths:
 
         L'ONTB ne propose pas de déconnexion : un jeton d'accès expire de lui-même au
         bout d'une heure.
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -147,7 +147,7 @@ paths:
 
   /auth/refresh:
     post:
-      tags: [Authentification]
+      tags: [ Authentification ]
       operationId: refreshToken
       summary: Renouveler le jeton d'accès
       description: |
@@ -156,7 +156,7 @@ paths:
 
         Le jeton de renouvellement, lui, n'est pas renouvelé : au bout de 30 jours, il
         faut repasser par `/auth/login`.
-      security: []
+      security: [ ]
       requestBody:
         required: true
         content:
@@ -170,7 +170,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [accessToken]
+                required: [ accessToken ]
                 properties:
                   accessToken:
                     type: string
@@ -186,7 +186,7 @@ paths:
 
   /users/me:
     get:
-      tags: [Compte]
+      tags: [ Compte ]
       operationId: getCurrentUser
       summary: Consulter son dossier voyageur
       description: |
@@ -221,15 +221,113 @@ paths:
   # ---- Découverte (public) -------------------------------------------------
 
   # GET /cities
+
   #   Rechercher une ville desservie, par filtre textuel.
   #   Chaque ville du réseau possède une catapulte unique en son centre.
   #   Opération PUBLIQUE : on cherche sans être connecté.
+  /cities:
+    get:
+      tags: [ Découverte ]
+      operationId: listCities
+      summary: Rechercher une ville desservie
+      description: |
+        Retourne les villes du réseau, filtrées par recherche textuelle. Chaque ville
+        possède une catapulte unique en son centre, qui sert à la fois de point de
+        lancement et de zone de réception.
+      security: [ ]
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Filtre textuel sur le nom de la ville. Insensible à la casse et aux accents.
+          schema:
+            type: string
+          example: dij
+        - name: limit
+          in: query
+          required: false
+          description: Nombre maximum de villes retournées.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Villes correspondant au filtre. Tableau vide si aucune.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/City'
+              example:
+                - id: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+                  name: Dijon
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/ValidationError' }
 
   # POST /trips/search
   #   Rechercher les lancers reliant deux villes à une date donnée, pour un
   #   nombre de places. Tous les lancers sont directs : aucune correspondance,
   #   aucun itinéraire composé. Sans lancer direct ce jour-là, la liste est vide.
   #   Opération PUBLIQUE.
+  /trips/search:
+    post:
+      tags: [ Découverte ]
+      operationId: searchSummaryTrips
+      summary: "Recherche les trajets reliant deux villes."
+      description: |
+        Les trajets recherchés auront pour détails les deux villes reliées, à la date, et le nombre de places choisies.
+        
+        Les trajets sont tous directs, aucune correspondance n'ont lieu.
+      security: [ ]
+      parameters:
+        - name: de
+          in: query
+          required: true
+          description: Ville de départ
+          schema:
+            type: string
+            example: Dij
+        - name: ar
+          in: query
+          required: true
+          description: Ville d'arrivée
+          schema:
+            type: string
+            example: Lyo
+        - name: da
+          in: query
+          required: true
+          description: Date de départ
+          schema:
+            type: string
+            format: date
+            example: 2026/10/30
+        - name: p
+          in: query
+          required: true
+          description: Nombre de places choisies dans le filtre.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 1
+      responses:
+        '200':
+          description: Recherche effectuée avec succès.
+          content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/TripSummary'
+            example:
+              - id: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+        '422':
+
+
 
   # GET /trips/{id}
   #   Consulter le détail d'un lancer. Le détail porte ce qu'une liste de
@@ -495,10 +593,48 @@ components:
     # City
     #   Une ville desservie. Chaque ville possède une catapulte unique en son
     #   centre, qui sert à la fois de point de lancement et de réception.
+    City:
+      type: object
+      description: Ville desservie. Chaque ville possède une catapulte unique en son centre.
+      required: [ id, name ]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+        name:
+          type: string
+          example: Dijon
 
     # TripSummary
     #   Un lancer tel qu'il apparaît dans une liste de résultats : de quoi
     #   choisir, pas de quoi préparer son voyage.
+    TripSummary:
+      type: object
+      required: [id, departure, arrival, departureTime, arrivalTime, travelTime, price]
+      properties:
+        id:
+          type: int
+          format: uuid
+          example: 3f2a1b8c-5d4e-4f6a-9b8c-1d2e3f4a5b6c
+          description: "Code unique ou identifiant de trajet"
+        departure:
+          $ref: '#/components/schemas/City'
+        arrival:
+          $ref: '#/components/schemas/City'
+        departureTime:
+          type: string
+          example: "14:30"
+        arrivalTime:
+          type: string
+          example: "14:50"
+        travelTime:
+          type: string
+          example: "20"
+        price:
+          type: int
+          example: €30
+
 
     # TripDetail
     #   Le même lancer, consulté seul. Il ajoute ce dont on a besoin une fois
